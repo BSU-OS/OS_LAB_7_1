@@ -22,12 +22,13 @@ private:
     int N = 1;
     int splitSize = 0;
 private:
-    static DWORD WINAPI threadFunction(void* input){
+    static DWORD WINAPI threadFunction(void *input) {
+        std::pair<std::pair<Matrix<int>, Matrix<int> >, Matrix<int> *> *mPair = (std::pair<std::pair<Matrix<int>, Matrix<int> >, Matrix<int> *> *) input;
+        *(mPair->second) = MatrixMultiply::multiplyAB(mPair->first.first, mPair->first.second);
 
-        std::pair<std::pair<Matrix<int>,Matrix<int > >,Matrix<int>*>* mPair=(std::pair<std::pair<Matrix<int>,Matrix<int > >,Matrix<int>*>*)input;
-        *(mPair->second)=MatrixMultiply::multiplyAB(mPair->first.first,mPair->first.second);
         return 0;
     }
+
 public:
     MatrixMultiply(int n) {
         N = n;//TODO
@@ -136,16 +137,19 @@ public:
         for (size_t i = 0; i < A.size(); ++i)
             for (size_t j = 0; j < B.front().size(); ++j) {
                 std::vector<HANDLE> thArr(B.size());
+                std::vector<Matrix<int>* > blocks(B.size());
                 for (size_t k = 0; k < B.size(); ++k) {
-                    Matrix<int> block;
-                    std::pair<std::pair<Matrix<int>,Matrix<int> >,Matrix<int>* > mPair= std::make_pair(std::make_pair(A[i][k],B[k][j]),&block);
-                    thArr[k] = CreateThread(NULL,0,threadFunction,&mPair,0,NULL);
-                    //thArr[k].join();
+                    blocks[k]=new Matrix<int>;
+                    void *mPair = new std::pair<std::pair<Matrix<int>, Matrix<int> >, Matrix<int> *>(
+                            std::make_pair(std::make_pair(A[i][k], B[k][j]), blocks[k]));
+                    thArr[k] = CreateThread(NULL, 0, threadFunction, mPair, 0, NULL);
+                }
+                for (size_t k = 0; k < B.size(); ++k) {
                     WaitForSingleObject(thArr[k],INFINITE);
                     if (C[i][j].empty())
-                        C[i][j] = block;
+                        C[i][j] = *(blocks[k]);
                     else
-                        C[i][j] = sumAB(block, C[i][j]);
+                        C[i][j] = sumAB(*(blocks[k]), C[i][j]);
                 }
             }
         return C;
