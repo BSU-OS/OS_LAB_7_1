@@ -10,11 +10,13 @@
 #include <iomanip>
 #include <string>
 #include <windows.h>
+#include <mutex>
 //pair<pair<matrixA,matrixB>,matrixC*>
 
 class MatrixMultiply {
 
 private:
+    std::mutex t_lock;
     template<class ValueType=int>
     using Matrix = std::vector<std::vector<ValueType> >;
     Matrix<int> A, B;
@@ -138,6 +140,7 @@ public:
             for (size_t j = 0; j < B.front().size(); ++j) {
                 std::vector<HANDLE> thArr(B.size());
                 std::vector<Matrix<int>* > blocks(B.size());
+                t_lock.lock();
                 for (size_t k = 0; k < B.size(); ++k) {
                     blocks[k]=new Matrix<int>;
                     void *mPair = new std::pair<std::pair<Matrix<int>, Matrix<int> >, Matrix<int> *>(
@@ -151,6 +154,7 @@ public:
                     else
                         C[i][j] = sumAB(*(blocks[k]), C[i][j]);
                 }
+                t_lock.unlock();
             }
         return C;
     }
